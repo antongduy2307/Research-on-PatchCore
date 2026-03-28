@@ -1,0 +1,30 @@
+experiment:
+  name: patchcore_baseline
+  run_name: mvtec_screw_wrn50
+
+data:
+  root: ./data/mvtec
+  category: screw
+  image_size: 256
+  crop_size: 224
+  num_workers: 2
+
+model:
+  backbone: wide_resnet50_2
+  layers:
+    - layer2
+    - layer3
+  local_agg: true
+
+memory:
+  subsample_ratio: 0.1
+  random_seed: 42
+
+eval:
+  save_dir: ./outputs
+  num_vis_samples: 5
+
+runtime:
+  device: cuda
+  batch_size_train: 8
+  batch_size_test: 1
