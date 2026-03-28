@@ -1,0 +1,7 @@
+.venv
+*.xz
+/data
+__pycache__
+mlflow.db
+mlruns/
+outputs/
