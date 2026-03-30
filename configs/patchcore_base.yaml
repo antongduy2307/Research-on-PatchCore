@@ -1,6 +1,6 @@
 experiment:
-  name: patchcore_baseline
-  run_name: mvtec_screw_wrn50
+  name: patchcore_v2
+  run_name: mvtec_screw_wrn50_v2
 
 data:
   root: ./data/mvtec
@@ -17,6 +17,7 @@ model:
   local_agg: true
 
 memory:
+  subsampling_method: greedy_coreset
   subsample_ratio: 0.1
   random_seed: 42
 

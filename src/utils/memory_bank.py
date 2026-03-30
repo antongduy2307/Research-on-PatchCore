@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 import torch
@@ -19,6 +18,7 @@ def build_memory_bank_metadata(config: dict) -> dict:
         "backbone": config["model"]["backbone"],
         "layers": list(config["model"]["layers"]),
         "local_agg": bool(config["model"]["local_agg"]),
+        "subsampling_method": config["memory"].get("subsampling_method", "greedy_coreset"),
         "subsample_ratio": float(config["memory"]["subsample_ratio"]),
         "random_seed": int(config["memory"]["random_seed"]),
     }
@@ -26,15 +26,13 @@ def build_memory_bank_metadata(config: dict) -> dict:
 
 def find_matching_memory_bank(models_root: str | Path, metadata: dict) -> Path | None:
     models_root = Path(models_root)
-    if not models_root.exists():
+    candidate = models_root / metadata["category"] / "memory_bank.pt"
+    if not candidate.exists():
         return None
 
-    candidates = sorted(models_root.glob(f"*/{metadata['category']}/memory_bank.pt"), reverse=True)
-    for candidate in candidates:
-        checkpoint = torch.load(candidate, map_location="cpu")
-        if checkpoint.get("metadata", {}) == metadata:
-            return candidate
-
+    checkpoint = torch.load(candidate, map_location="cpu")
+    if checkpoint.get("metadata", {}) == metadata:
+        return candidate
     return None
 
 
@@ -44,8 +42,7 @@ def save_memory_bank(
     memory_bank: torch.Tensor,
     memory_bank_size_before: int,
 ) -> Path:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    save_dir = Path(models_root) / timestamp / metadata["category"]
+    save_dir = Path(models_root) / metadata["category"]
     save_dir.mkdir(parents=True, exist_ok=True)
 
     save_path = save_dir / "memory_bank.pt"
@@ -56,7 +53,6 @@ def save_memory_bank(
             "memory_bank_size_before": int(memory_bank_size_before),
             "memory_bank_size_after": int(memory_bank.shape[0]),
             "feature_dim": int(memory_bank.shape[1]),
-            "created_at": timestamp,
         },
         save_path,
     )

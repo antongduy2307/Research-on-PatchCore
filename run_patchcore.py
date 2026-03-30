@@ -18,7 +18,6 @@ from src.utils import (
     find_matching_memory_bank,
     load_config,
     load_memory_bank,
-    normalize_image_scores,
     save_memory_bank,
     save_anomaly_visualizations,
     set_seed,
@@ -155,7 +154,7 @@ def main() -> None:
     ).to(device)
     patchcore = PatchCore(local_agg=config["model"]["local_agg"])
     memory_bank_metadata = build_memory_bank_metadata(config)
-    models_root = Path(config["eval"]["save_dir"]) / "models"
+    models_root = Path(config["eval"]["save_dir"]) / "models" / "v2"
     cached_memory_bank_path = find_matching_memory_bank(models_root, memory_bank_metadata)
 
     mlflow.set_experiment(config["experiment"]["name"])
@@ -169,6 +168,7 @@ def main() -> None:
                 "crop_size": config["data"]["crop_size"],
                 "batch_size_train": config["runtime"]["batch_size_train"],
                 "batch_size_test": config["runtime"]["batch_size_test"],
+                "subsampling_method": config["memory"].get("subsampling_method", "greedy_coreset"),
                 "subsample_ratio": config["memory"]["subsample_ratio"],
                 "device": str(device),
                 "local_agg": config["model"]["local_agg"],
@@ -208,11 +208,6 @@ def main() -> None:
             crop_size=config["data"]["crop_size"],
         )
 
-        normalized_scores, min_good_score, max_defect_score = normalize_image_scores(
-            results["labels"],
-            results["scores"],
-        )
-        results["scores"] = normalized_scores
         image_auroc = compute_image_auroc(results["labels"], results["scores"])
         pixel_auroc = compute_pixel_auroc(
             [mask.numpy() for mask in results["masks"]],
@@ -242,8 +237,6 @@ def main() -> None:
                 "num_test_samples": len(results["labels"]),
                 "num_normal": num_normal,
                 "num_anomalous": num_anomalous,
-                "score_min_good": min_good_score,
-                "score_max_defect": max_defect_score,
             }
         )
         mlflow.log_param("saved_heatmaps_dir", str(saved_vis_dir))
@@ -255,8 +248,6 @@ def main() -> None:
         print(f"Category: {category}")
         print(f"Image-level AUROC: {image_auroc:.4f}")
         print(f"Pixel-level AUROC: {pixel_auroc:.4f}")
-        print(f"Scaled score range anchor (good min -> 0): {min_good_score:.6f}")
-        print(f"Scaled score range anchor (defect max -> 1): {max_defect_score:.6f}")
         print(f"Memory bank size before subsampling: {patchcore.memory_bank_size_before}")
         print(f"Memory bank size after subsampling: {patchcore.memory_bank_size_after}")
         print(f"Heatmaps saved to: {saved_vis_dir}")
