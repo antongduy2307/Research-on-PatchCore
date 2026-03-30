@@ -12,10 +12,14 @@ from src.datasets import MVTecADDataset
 from src.models import FeatureExtractor
 from src.patchcore import PatchCore
 from src.utils import (
+    build_memory_bank_metadata,
     compute_image_auroc,
     compute_pixel_auroc,
+    find_matching_memory_bank,
     load_config,
+    load_memory_bank,
     normalize_image_scores,
+    save_memory_bank,
     save_anomaly_visualizations,
     set_seed,
 )
@@ -150,6 +154,9 @@ def main() -> None:
         layers=config["model"]["layers"],
     ).to(device)
     patchcore = PatchCore(local_agg=config["model"]["local_agg"])
+    memory_bank_metadata = build_memory_bank_metadata(config)
+    models_root = Path(config["eval"]["save_dir"]) / "models"
+    cached_memory_bank_path = find_matching_memory_bank(models_root, memory_bank_metadata)
 
     mlflow.set_experiment(config["experiment"]["name"])
     with mlflow.start_run(run_name=config["experiment"]["run_name"]):
@@ -168,12 +175,30 @@ def main() -> None:
             }
         )
 
-        train_embeddings = collect_train_embeddings(train_loader, extractor, patchcore, device)
-        patchcore.build_memory_bank(
-            train_embeddings,
-            subsample_ratio=config["memory"]["subsample_ratio"],
-            seed=config["memory"]["random_seed"],
-        )
+        if cached_memory_bank_path is not None:
+            checkpoint = load_memory_bank(cached_memory_bank_path, device)
+            patchcore.memory_bank = checkpoint["memory_bank"]
+            patchcore.memory_bank_size_after = int(checkpoint["memory_bank_size_after"])
+            patchcore.memory_bank_size_before = int(checkpoint["memory_bank_size_before"])
+            patchcore.feature_dim = int(checkpoint["feature_dim"])
+            memory_bank_path = cached_memory_bank_path
+            memory_bank_source = "cache"
+            print(f"Loaded cached memory bank from: {memory_bank_path}")
+        else:
+            train_embeddings = collect_train_embeddings(train_loader, extractor, patchcore, device)
+            patchcore.build_memory_bank(
+                train_embeddings,
+                subsample_ratio=config["memory"]["subsample_ratio"],
+                seed=config["memory"]["random_seed"],
+            )
+            memory_bank_path = save_memory_bank(
+                models_root,
+                memory_bank_metadata,
+                patchcore.memory_bank,
+                patchcore.memory_bank_size_before,
+            )
+            memory_bank_source = "rebuilt"
+            print(f"Saved new memory bank to: {memory_bank_path}")
 
         results = evaluate(
             dataloader=test_loader,
@@ -222,6 +247,9 @@ def main() -> None:
             }
         )
         mlflow.log_param("saved_heatmaps_dir", str(saved_vis_dir))
+        mlflow.log_param("memory_bank_source", memory_bank_source)
+        mlflow.log_param("memory_bank_path", str(memory_bank_path))
+        mlflow.log_artifact(str(memory_bank_path), artifact_path=f"models/{category}")
         mlflow.log_artifacts(str(saved_vis_dir), artifact_path=f"visualizations/{category}")
 
         print(f"Category: {category}")

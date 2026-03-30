@@ -4,12 +4,11 @@
 This document freezes the current PatchCore baseline as the reference point for future experiments. The baseline was executed across all 15 MVTec AD categories available under `data/mvtec` using the current non-parametric PatchCore pipeline with a frozen pretrained `wide_resnet50_2` feature extractor.
 
 ## 2. Code Version
-- Branch:
-- Commit:
-- Date:
-- Entry script:
-- Config file:
-
+- Branch: Main  
+- Commit: a704dbb471537564022b91f7c996e772cdc79988
+- Date: 28 Mar 2026
+- Entry script: Run PatchCore baseline on dataset MVTec
+  
 ## 3. Environment
 - OS: Windows 11 (`Windows-11-10.0.26200-SP0`)
 - Python: `3.13.12`
@@ -228,6 +227,5 @@ This document freezes the current PatchCore baseline as the reference point for 
 - The sweep report is metric-driven; heatmap observations were not manually audited image-by-image for every sample in every category.
 
 ## 10. Next Steps
-1. Freeze the code version manually in Section 2 and tag this state as the baseline reference.
-2. Add an automated all-category evaluation script that writes a machine-readable summary file directly instead of relying on console logs.
-3. Separate deployment-time scoring from evaluation-time normalized scoring so future experiments can compare both raw and normalized metrics cleanly.
+1. Add an automated all-category evaluation script that writes a machine-readable summary file directly instead of relying on console logs.
+2. Separate deployment-time scoring from evaluation-time normalized scoring so future experiments can compare both raw and normalized metrics cleanly.
