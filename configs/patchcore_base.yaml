@@ -23,7 +23,7 @@ memory:
 
 eval:
   save_dir: ./outputs
-  num_vis_samples: 5
+  num_vis_samples: -1
 
 runtime:
   device: cuda

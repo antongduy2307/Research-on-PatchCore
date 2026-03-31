@@ -20,6 +20,7 @@ from src.utils import (
     load_memory_bank,
     save_memory_bank,
     save_anomaly_visualizations,
+    save_score_distribution,
     set_seed,
 )
 
@@ -218,10 +219,16 @@ def main() -> None:
         saved_vis_dir = save_anomaly_visualizations(
             images=results["vis_images"],
             anomaly_maps=results["vis_maps"],
+            labels=results["labels"],
             image_scores=results["scores"],
             image_paths=results["vis_paths"],
             save_dir=vis_dir,
             max_samples=config["eval"]["num_vis_samples"],
+        )
+        distribution_score_path = save_score_distribution(
+            labels=results["labels"],
+            image_scores=results["scores"],
+            save_dir=vis_dir,
         )
 
         num_normal = sum(1 for label in results["labels"] if label == 0)
@@ -240,6 +247,7 @@ def main() -> None:
             }
         )
         mlflow.log_param("saved_heatmaps_dir", str(saved_vis_dir))
+        mlflow.log_param("distribution_score_path", str(distribution_score_path))
         mlflow.log_param("memory_bank_source", memory_bank_source)
         mlflow.log_param("memory_bank_path", str(memory_bank_path))
         mlflow.log_artifact(str(memory_bank_path), artifact_path=f"models/{category}")
